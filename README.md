@@ -66,6 +66,13 @@ MONGODB_URI=mongodb://mongo:27017/travel_lab
 DB_NAME=travel_lab
 ```
 
+To run the Docker apps against MongoDB Atlas instead, set this in `.env`:
+
+```env
+DOCKER_MONGODB_URI=mongodb+srv://<user>:<password>@<cluster-host>/travel_lab?retryWrites=true&w=majority
+DB_NAME=travel_lab
+```
+
 ## Share On The Same Network
 
 The apps listen on `0.0.0.0` and Docker publishes the ports, so another device on the same network can open the apps using your computer's IP address.
@@ -106,6 +113,80 @@ For local MongoDB, use:
 ```env
 MONGODB_URI=mongodb://localhost:27017/travel_lab
 DB_NAME=travel_lab
+```
+
+## Run V2/V3/V4 With MongoDB Atlas
+
+Local MongoDB Community does not support the `$search` and `$vectorSearch` aggregation stages used by V2, V3, and V4. Use MongoDB Atlas for the full demo.
+
+1. In Atlas, open your project and create or select an M0/Flex cluster.
+
+2. Create a database user:
+
+   Atlas sidebar -> Database Access -> Add New Database User.
+
+3. Allow your IP:
+
+   Atlas sidebar -> Network Access -> Add IP Address -> Add Current IP Address.
+
+   For a workshop/demo network you can temporarily use `0.0.0.0/0`, but remove it afterward.
+
+4. Copy the connection string:
+
+   Atlas -> Database -> Connect -> Drivers -> copy the `mongodb+srv://...` URI.
+
+5. Update `.env`:
+
+   ```env
+   DB_NAME=travel_lab
+   MONGODB_URI=mongodb+srv://<user>:<password>@<cluster-host>/travel_lab?retryWrites=true&w=majority
+   DOCKER_MONGODB_URI=mongodb+srv://<user>:<password>@<cluster-host>/travel_lab?retryWrites=true&w=majority
+   LLM_PROVIDER=gemini
+   GEMINI_API_KEY=your_gemini_key
+   EMBEDDING_DIMENSIONS=1536
+   ```
+
+6. Seed the Atlas database with embeddings:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   The `startup-init` service calls `/api/seed?embeddings=true`. You can also click the seed button in the UI.
+
+7. Create Atlas Search and Vector Search indexes.
+
+   If you have `mongosh` installed locally:
+
+   ```bash
+   mongosh "mongodb+srv://<user>:<password>@<cluster-host>/travel_lab" shared/scripts/create-travel-lab-indexes.js
+   ```
+
+   Or run it through Docker:
+
+   ```bash
+   docker compose run --rm startup-init
+   ```
+
+8. Wait in Atlas until the indexes are queryable:
+
+   Atlas -> your cluster -> Search & Vector Search.
+
+The project creates these search indexes:
+
+- `destinations_search`
+- `hotels_search`
+- `experiences_search`
+- `destinations_vector`
+- `hotels_vector`
+- `experiences_vector`
+
+After this, open:
+
+```text
+http://localhost:3002
+http://localhost:3003
+http://localhost:3004
 ```
 
 ## Notes
