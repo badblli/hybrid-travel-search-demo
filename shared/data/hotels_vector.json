@@ -1,0 +1,16 @@
+{
+  "name": "hotels_vector",
+  "type": "vectorSearch",
+  "definition": {
+    "fields": [
+      { "type": "vector", "path": "embedding", "numDimensions": 1536, "similarity": "cosine" },
+      { "type": "filter", "path": "type" },
+      { "type": "filter", "path": "region" },
+      { "type": "filter", "path": "stars" },
+      { "type": "filter", "path": "pricePerNight" },
+      { "type": "filter", "path": "category" },
+      { "type": "filter", "path": "destinationSlug" },
+      { "type": "filter", "path": "beach.isBeachfront" }
+    ]
+  }
+}

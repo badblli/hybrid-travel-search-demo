@@ -1,0 +1,111 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - travel_lab_mongo:/data/db
+
+  app-v1-traditional:
+    build:
+      context: .
+      dockerfile: apps/app-v1-traditional/Dockerfile
+    env_file: .env
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/travel_lab
+      DB_NAME: travel_lab
+    ports:
+      - "3001:3000"
+    depends_on:
+      - mongo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  app-v2-atlas-search:
+    build:
+      context: .
+      dockerfile: apps/app-v2-atlas-search/Dockerfile
+    env_file: .env
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/travel_lab
+      DB_NAME: travel_lab
+    ports:
+      - "3002:3000"
+    depends_on:
+      - mongo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  app-v3-hybrid-search:
+    build:
+      context: .
+      dockerfile: apps/app-v3-hybrid-search/Dockerfile
+    env_file: .env
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/travel_lab
+      DB_NAME: travel_lab
+    ports:
+      - "3003:3000"
+    depends_on:
+      - mongo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  app-v4-rag:
+    build:
+      context: .
+      dockerfile: apps/app-v4-rag/Dockerfile
+    env_file: .env
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/travel_lab
+      DB_NAME: travel_lab
+    ports:
+      - "3004:3000"
+    depends_on:
+      - mongo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  startup-init:
+    build:
+      context: .
+      dockerfile: docker/init/Dockerfile
+    env_file: .env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/travel_lab
+      DB_NAME: travel_lab
+    depends_on:
+      mongo:
+        condition: service_started
+      app-v1-traditional:
+        condition: service_healthy
+      app-v2-atlas-search:
+        condition: service_healthy
+      app-v3-hybrid-search:
+        condition: service_healthy
+      app-v4-rag:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  travel_lab_mongo:

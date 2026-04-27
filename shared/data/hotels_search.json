@@ -1,0 +1,46 @@
+{
+  "name": "hotels_search",
+  "type": "search",
+  "definition": {
+    "analyzer": "lucene.turkish",
+    "searchAnalyzer": "lucene.turkish",
+    "mappings": {
+      "dynamic": false,
+      "fields": {
+        "name": [
+          { "type": "string", "analyzer": "lucene.turkish" },
+          { "type": "autocomplete", "analyzer": "lucene.edgeGram", "tokenization": "edgeGram", "minGrams": 2, "maxGrams": 10 }
+        ],
+        "description": { "type": "string", "analyzer": "lucene.turkish" },
+        "searchableText": { "type": "string", "analyzer": "lucene.turkish" },
+        "highlights": { "type": "string", "analyzer": "lucene.turkish" },
+        "city": { "type": "string", "analyzer": "lucene.turkish" },
+        "region": { "type": "string", "analyzer": "lucene.turkish" },
+        "neighborhood": { "type": "string", "analyzer": "lucene.turkish" },
+        "destinationSlug": { "type": "string", "analyzer": "lucene.turkish" },
+        "amenities": [
+          { "type": "string", "analyzer": "lucene.turkish" },
+          { "type": "token" }
+        ],
+        "tags": { "type": "string", "analyzer": "lucene.turkish" },
+        "travelStyles": { "type": "string", "analyzer": "lucene.turkish" },
+        "suitableFor": { "type": "string", "analyzer": "lucene.turkish" },
+        "themes": { "type": "string", "analyzer": "lucene.turkish" },
+        "excludedIntents": { "type": "string", "analyzer": "lucene.keyword" },
+        "type": { "type": "stringFacet" },
+        "rating": { "type": "numberFacet" },
+        "stars": { "type": "numberFacet" },
+        "pricePerNight": { "type": "number" },
+        "beach": {
+          "type": "document",
+          "fields": {
+            "isBeachfront": { "type": "boolean" },
+            "privateBeach": { "type": "boolean" },
+            "seaDistanceMeters": { "type": "number" },
+            "beachType": { "type": "string", "analyzer": "lucene.turkish" }
+          }
+        }
+      }
+    }
+  }
+}

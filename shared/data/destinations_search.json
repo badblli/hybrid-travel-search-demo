@@ -1,0 +1,63 @@
+{
+  "name": "destinations_search",
+  "type": "search",
+  "definition": {
+    "analyzer": "lucene.turkish",
+    "searchAnalyzer": "lucene.turkish",
+    "mappings": {
+      "dynamic": false,
+      "fields": {
+        "name": [
+          {
+            "type": "string",
+            "analyzer": "lucene.turkish"
+          },
+          {
+            "type": "autocomplete",
+            "analyzer": "lucene.edgeGram",
+            "tokenization": "edgeGram",
+            "minGrams": 2,
+            "maxGrams": 10
+          }
+        ],
+        "description": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "highlights": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "city": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "region": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "country": {
+          "type": "string",
+          "analyzer": "lucene.standard"
+        },
+        "tags": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "category": {
+          "type": "stringFacet"
+        },
+        "rating": {
+          "type": "numberFacet"
+        },
+        "priceLevel": {
+          "type": "numberFacet"
+        },
+        "bestSeason": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        }
+      }
+    }
+  }
+}

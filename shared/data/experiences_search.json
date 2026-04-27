@@ -1,0 +1,62 @@
+{
+  "name": "experiences_search",
+  "type": "search",
+  "definition": {
+    "analyzer": "lucene.turkish",
+    "searchAnalyzer": "lucene.turkish",
+    "mappings": {
+      "dynamic": false,
+      "fields": {
+        "name": [
+          {
+            "type": "string",
+            "analyzer": "lucene.turkish"
+          },
+          {
+            "type": "autocomplete",
+            "analyzer": "lucene.edgeGram",
+            "tokenization": "edgeGram",
+            "minGrams": 2,
+            "maxGrams": 10
+          }
+        ],
+        "description": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "highlights": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "city": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "region": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "tags": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "category": {
+          "type": "stringFacet"
+        },
+        "difficulty": {
+          "type": "stringFacet"
+        },
+        "duration": {
+          "type": "string",
+          "analyzer": "lucene.turkish"
+        },
+        "price": {
+          "type": "number"
+        },
+        "rating": {
+          "type": "numberFacet"
+        }
+      }
+    }
+  }
+}
