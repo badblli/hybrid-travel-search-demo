@@ -9,7 +9,7 @@
       "fields": {
         "name": [
           { "type": "string", "analyzer": "lucene.turkish" },
-          { "type": "autocomplete", "analyzer": "lucene.edgeGram", "tokenization": "edgeGram", "minGrams": 2, "maxGrams": 10 }
+          { "type": "autocomplete", "analyzer": "lucene.standard", "tokenization": "edgeGram", "minGrams": 2, "maxGrams": 10 }
         ],
         "description": { "type": "string", "analyzer": "lucene.turkish" },
         "searchableText": { "type": "string", "analyzer": "lucene.turkish" },

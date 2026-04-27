@@ -14,7 +14,7 @@
           },
           {
             "type": "autocomplete",
-            "analyzer": "lucene.edgeGram",
+            "analyzer": "lucene.standard",
             "tokenization": "edgeGram",
             "minGrams": 2,
             "maxGrams": 10
