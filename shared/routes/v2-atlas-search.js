@@ -93,7 +93,7 @@ function buildDestinationPipeline(query, filters) {
                 ],
                 minimumShouldMatch: 1,
               }
-            : {}),
+            : { should: [{ exists: { path: 'name' } }], minimumShouldMatch: 1 }),
           ...(filterClauses.length ? { filter: filterClauses } : {}),
         },
       },
@@ -215,7 +215,7 @@ function buildExperiencePipeline(query, filters) {
                 ],
                 minimumShouldMatch: 1,
               }
-            : {}),
+            : { should: [{ exists: { path: 'name' } }], minimumShouldMatch: 1 }),
           ...(filterClauses.length ? { filter: filterClauses } : {}),
         },
       },

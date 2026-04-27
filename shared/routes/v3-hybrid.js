@@ -17,6 +17,7 @@ const { fuseRankedLists } = require('../utils/rrf');
 router.post('/search', async (req, res) => {
   const db = getDb();
   const { query = '', collection = 'destinations', filters = {}, alpha = 0.75 } = req.body;
+  const cleanQuery = String(query || '').trim();
   const startTime = Date.now();
 
   if (!hasEmbeddingProvider()) {
@@ -27,19 +28,20 @@ router.post('/search', async (req, res) => {
   }
 
   try {
-    const intent = detectIntent(query);
-    const queryVector = await generateEmbedding(query);
+    const intent = detectIntent(cleanQuery);
+    const canUseVector = collection === 'hotels' && !!cleanQuery;
+    const queryVector = canUseVector ? await generateEmbedding(cleanQuery) : null;
     let facets = {};
     let facetPipeline = null;
     let facetResponse = null;
 
-    const textPipeline = buildTextPipeline(query, filters, collection, intent);
-    const vectorPipeline = buildVectorPipeline(queryVector, filters, collection, intent);
+    const textPipeline = buildTextPipeline(cleanQuery, filters, collection, intent);
+    const vectorPipeline = canUseVector ? buildVectorPipeline(queryVector, filters, collection, intent) : null;
 
     const [textResults, vectorResults, facetData] = await Promise.all([
       db.collection(collection).aggregate(textPipeline).toArray(),
-      db.collection(collection).aggregate(vectorPipeline).toArray(),
-      collection === 'hotels' ? buildHotelFacets(db, query, filters) : Promise.resolve(null),
+      vectorPipeline ? db.collection(collection).aggregate(vectorPipeline).toArray().catch(() => []) : Promise.resolve([]),
+      collection === 'hotels' ? buildHotelFacets(db, cleanQuery, filters) : Promise.resolve(null),
     ]);
 
     if (facetData) {
@@ -69,7 +71,7 @@ router.post('/search', async (req, res) => {
       facets,
       meta: {
         version: 'v3-hybrid',
-        query,
+        query: cleanQuery,
         intent,
         count: merged.length,
         elapsed: Date.now() - startTime,
@@ -163,16 +165,12 @@ function buildTextPipeline(query, filters, collection, intent) {
   if (collection === 'hotels') {
     const searchFilterClauses = buildHotelFilters(intent, filters);
     const postMatch = buildBeachPostMatch(intent);
+    const { compound } = buildHotelSearchCompound(query, filters);
     return [
       {
         $search: {
           index: 'hotels_search',
-          compound: {
-            should: buildHotelShouldClauses(query, intent),
-            minimumShouldMatch: 1,
-            ...(searchFilterClauses.length ? { filter: searchFilterClauses } : {}),
-            ...(intent.beach ? { mustNot: [{ text: { path: 'excludedIntents', query: ['beach', 'sea', 'sun', 'seaside'] } }] } : {}),
-          },
+          compound,
         },
       },
       { $addFields: { score: { $meta: 'searchScore' } } },
@@ -191,11 +189,13 @@ function buildTextPipeline(query, filters, collection, intent) {
       $search: {
         index: `${collection}_search`,
         compound: {
-          should: [
-            { text: { query, path: 'name', score: { boost: { value: 3 } }, fuzzy: { maxEdits: 2 } } },
-            { text: { query, path: 'description' } },
-            { text: { query, path: 'tags', score: { boost: { value: 2 } } } },
-          ],
+          should: query
+            ? [
+                { text: { query, path: 'name', score: { boost: { value: 3 } }, fuzzy: { maxEdits: 2 } } },
+                { text: { query, path: 'description' } },
+                { text: { query, path: 'tags', score: { boost: { value: 2 } } } },
+              ]
+            : [{ exists: { path: 'name' } }],
           minimumShouldMatch: 1,
           ...(filterClauses.length ? { filter: filterClauses } : {}),
         },

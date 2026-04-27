@@ -19,16 +19,20 @@ const LLM_PROVIDER = (process.env.LLM_PROVIDER || 'openai').toLowerCase();
 router.post('/rag', async (req, res) => {
   const db = getDb();
   const { query = '', collection = 'hotels', filters = {}, conversationHistory = [] } = req.body;
+  const cleanQuery = String(query || '').trim();
   const startTime = Date.now();
 
   try {
     if (!hasEmbeddingProvider()) throw new Error(`${getEmbeddingProviderLabel()} API key not set`);
+    if (!cleanQuery) {
+      return res.status(400).json({ error: 'RAG requires a non-empty query.' });
+    }
 
-    const intent = detectIntent(query);
-    const queryVector = await generateEmbedding(query);
-    const textPipeline = buildTextPipeline(query, filters, collection, intent);
-    const vectorPipeline = buildVectorPipeline(queryVector, filters, collection, intent);
-    const retrievedDocs = await hybridRetrieve(db, query, queryVector, collection, filters, intent);
+    const intent = detectIntent(cleanQuery);
+    const queryVector = await generateEmbedding(cleanQuery);
+    const textPipeline = buildTextPipeline(cleanQuery, filters, collection, intent);
+    const vectorPipeline = collection === 'hotels' ? buildVectorPipeline(queryVector, filters, collection, intent) : null;
+    const retrievedDocs = await hybridRetrieve(db, cleanQuery, queryVector, collection, filters, intent);
     let facetPipeline = null;
     let facetResponse = null;
     let facets = {};
@@ -48,7 +52,7 @@ router.post('/rag', async (req, res) => {
       sources: grounded.map((doc, idx) => ({ ref: idx + 1, id: doc._id, name: doc.name, collection: doc._collection || collection })),
       meta: {
         version: 'v4-rag',
-        query,
+        query: cleanQuery,
         intent,
         count: grounded.length,
         elapsed: Date.now() - startTime,
@@ -70,9 +74,10 @@ async function hybridRetrieve(db, query, queryVector, collection, filters, inten
   const allResults = [];
 
   for (const col of collections) {
+    const vectorPipeline = col === 'hotels' && queryVector ? buildVectorPipeline(queryVector, filters, col, intent) : null;
     const [textRes, vecRes] = await Promise.all([
       db.collection(col).aggregate(buildTextPipeline(query, filters, col, intent)).toArray().catch(() => []),
-      db.collection(col).aggregate(buildVectorPipeline(queryVector, filters, col, intent)).toArray().catch(() => []),
+      vectorPipeline ? db.collection(col).aggregate(vectorPipeline).toArray().catch(() => []) : Promise.resolve([]),
     ]);
 
     let fused = fuseRankedLists(textRes, vecRes, 0.75).map((doc) => ({
@@ -168,16 +173,12 @@ function buildTextPipeline(query, filters, collection, intent) {
   if (collection === 'hotels') {
     const filterClauses = buildHotelFilters(intent, filters);
     const postMatch = buildBeachPostMatch(intent);
+    const { compound } = buildHotelSearchCompound(query, filters);
     return [
       {
         $search: {
           index: 'hotels_search',
-          compound: {
-            should: buildHotelShouldClauses(query, intent),
-            minimumShouldMatch: 1,
-            ...(filterClauses.length ? { filter: filterClauses } : {}),
-            ...(intent.beach ? { mustNot: [{ text: { path: 'excludedIntents', query: ['beach', 'sea', 'sun', 'seaside'] } }] } : {}),
-          },
+          compound,
         },
       },
       { $addFields: { score: { $meta: 'searchScore' } } },
@@ -192,11 +193,13 @@ function buildTextPipeline(query, filters, collection, intent) {
       $search: {
         index: `${collection}_search`,
         compound: {
-          should: [
-            { text: { query, path: 'name', score: { boost: { value: 3 } }, fuzzy: { maxEdits: 1 } } },
-            { text: { query, path: 'description' } },
-            { text: { query, path: 'tags', score: { boost: { value: 2 } } } },
-          ],
+          should: query
+            ? [
+                { text: { query, path: 'name', score: { boost: { value: 3 } }, fuzzy: { maxEdits: 1 } } },
+                { text: { query, path: 'description' } },
+                { text: { query, path: 'tags', score: { boost: { value: 2 } } } },
+              ]
+            : [{ exists: { path: 'name' } }],
           minimumShouldMatch: 1,
         },
       },
@@ -299,14 +302,16 @@ function normalizeGeminiModel(model) {
 router.post('/search', async (req, res) => {
   const db = getDb();
   const { query = '', collection = 'destinations', filters = {} } = req.body;
+  const cleanQuery = String(query || '').trim();
   const startTime = Date.now();
 
   try {
-    const intent = detectIntent(query);
-    const queryVector = await generateEmbedding(query);
-    const textPipeline = buildTextPipeline(query, filters, collection, intent);
-    const vectorPipeline = buildVectorPipeline(queryVector, filters, collection, intent);
-    const docs = await hybridRetrieve(db, query, queryVector, collection, filters, intent);
+    const intent = detectIntent(cleanQuery);
+    const canUseVector = collection === 'hotels' && !!cleanQuery;
+    const queryVector = canUseVector ? await generateEmbedding(cleanQuery) : null;
+    const textPipeline = buildTextPipeline(cleanQuery, filters, collection, intent);
+    const vectorPipeline = canUseVector ? buildVectorPipeline(queryVector, filters, collection, intent) : null;
+    const docs = await hybridRetrieve(db, cleanQuery, queryVector, collection, filters, intent);
     let facets = {};
     let facetPipeline = null;
     let facetResponse = null;
@@ -321,7 +326,7 @@ router.post('/search', async (req, res) => {
       facets,
       meta: {
         version: 'v4-rag',
-        query,
+        query: cleanQuery,
         intent,
         count: docs.length,
         elapsed: Date.now() - startTime,

@@ -87,6 +87,8 @@ services:
       start_period: 10s
 
   startup-init:
+    profiles:
+      - init
     build:
       context: .
       dockerfile: docker/init/Dockerfile

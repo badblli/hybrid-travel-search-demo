@@ -7,9 +7,13 @@ function getAiProvider() {
 }
 
 async function generateEmbedding(text) {
+  const input = String(text || '').trim();
+  if (!input) {
+    throw new Error('Cannot generate embedding for an empty query.');
+  }
   const provider = getAiProvider();
-  if (provider === 'gemini') return generateGeminiEmbedding(text);
-  return generateOpenAIEmbedding(text);
+  if (provider === 'gemini') return generateGeminiEmbedding(input);
+  return generateOpenAIEmbedding(input);
 }
 
 async function generateOpenAIEmbedding(text) {
